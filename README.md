@@ -3,7 +3,7 @@
 SoulSound  is a sleek, modern, offline-first music player built with Flutter. It focuses on aesthetics, smooth animations, and a premium user experience.
 
 ![SoulSound Interface](assets/images/android/main_screen_logo.png)
-
+[![Build and Release APK](https://github.com/G0biKrish/SoundFlow/actions/workflows/flutter_release.yml/badge.svg?branch=main)](https://github.com/G0biKrish/SoundFlow/actions/workflows/flutter_release.yml)
 ## ✨ Key Features
 
 ### 🎧 Audio & Playback
