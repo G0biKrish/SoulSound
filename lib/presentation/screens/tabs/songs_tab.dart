@@ -22,6 +22,7 @@ class SongsTab extends ConsumerWidget {
           );
         }
         return ListView.builder(
+          itemExtent: 72.0, // Fixed height for performance
           itemCount: songs.length,
           itemBuilder: (context, index) {
             final song = songs[index];
@@ -50,7 +51,7 @@ class SongsTab extends ConsumerWidget {
             artist: s.artist,
             duration: s.duration,
             artUri: s.artworkPath != null ? Uri.file(s.artworkPath!) : null,
-            extras: {'dbId': s.id},
+            extras: {'dbId': s.id, 'mediaId': s.mediaId},
           ),
         )
         .toList();

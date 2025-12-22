@@ -78,7 +78,7 @@ class PlaylistDetailScreen extends ConsumerWidget {
               artist: s.artist,
               duration: s.duration,
               artUri: s.artworkPath != null ? Uri.file(s.artworkPath!) : null,
-              extras: {'dbId': s.id},
+              extras: {'dbId': s.id, 'mediaId': s.mediaId},
             ))
         .toList();
 
@@ -151,7 +151,9 @@ class PlaylistDetailScreen extends ConsumerWidget {
                               playlist.id, selectedIds.toList());
                       ref.invalidate(playlistsProvider);
                     }
-                    Navigator.pop(ctx);
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                    }
                   },
                   child: const Text('Add'),
                 ),

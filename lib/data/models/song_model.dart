@@ -25,6 +25,8 @@ class SongModel {
 
   int? trackNumber;
 
+  late int mediaId;
+
   String? artworkPath;
 
   late DateTime dateAdded;

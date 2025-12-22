@@ -1,5 +1,6 @@
 class Song {
   final int id; // Isar ID or negative for transient
+  final int mediaId; // Original MediaStore ID
   final String path;
   final String title;
   final String artist;
@@ -13,6 +14,7 @@ class Song {
 
   const Song({
     required this.id,
+    required this.mediaId,
     required this.path,
     required this.title,
     required this.artist,
@@ -29,6 +31,7 @@ class Song {
   factory Song.empty() {
     return Song(
       id: -1,
+      mediaId: -1,
       path: '',
       title: 'Unknown Title',
       artist: 'Unknown Artist',

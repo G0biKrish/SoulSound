@@ -1,20 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/music_providers.dart';
+import '../providers/theme_providers.dart';
 import 'package:permission_handler/permission_handler.dart';
 // For direct DB access if needed, or via provider
 import '../../main.dart';
 import 'memories_screen.dart';
+import 'excluded_folders_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final themeState = ref.watch(themeProvider);
+    final themeNotifier = ref.read(themeProvider.notifier);
+    final excludedFolders = ref.watch(excludedFoldersProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          // Appearance Section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Appearance',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ),
+          // Dark Mode Toggle
+          SwitchListTile(
+            secondary: Icon(
+              themeState.brightness == Brightness.dark
+                  ? Icons.dark_mode
+                  : Icons.light_mode,
+            ),
+            title: const Text('Dark Mode'),
+            subtitle: const Text('Toggle dark/light theme'),
+            value: themeState.brightness == Brightness.dark,
+            onChanged: (value) {
+              themeNotifier.toggleBrightness();
+            },
+          ),
+          const Divider(),
+          // Library Section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Library',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.refresh),
             title: const Text('Rescan Library'),
@@ -68,9 +111,16 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.folder_off),
             title: const Text('Excluded Folders'),
+            subtitle: Text(
+                '${excludedFolders.length} folder${excludedFolders.length != 1 ? 's' : ''} excluded'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              // TODO: implement folder picker for exclusion
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ExcludedFoldersScreen(),
+                ),
+              );
             },
           ),
           ListTile(

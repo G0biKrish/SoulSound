@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'artwork_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/audio_providers.dart';
@@ -30,18 +30,19 @@ class MiniPlayer extends ConsumerWidget {
             child: Row(
               children: [
                 // Art
-                Container(
-                  width: 64,
-                  height: 64,
-                  color: Colors.grey[800],
-                  child: item.artUri != null
-                      ? Image.file(
-                          File(item.artUri!.toFilePath()),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const Icon(Icons.music_note),
-                        )
-                      : const Icon(Icons.music_note),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    child: ArtworkWidget(
+                      mediaId: item.extras?['mediaId'] ?? -1,
+                      artworkPath: item.artUri?.toFilePath(),
+                      width: 48,
+                      height: 48,
+                      borderRadius: 24, // Circular
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 // Meta
@@ -54,16 +55,19 @@ class MiniPlayer extends ConsumerWidget {
                         item.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       Text(
                         item.artist ?? 'Unknown',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -77,7 +81,7 @@ class MiniPlayer extends ConsumerWidget {
                       children: [
                         IconButton(
                           icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           onPressed: () {
                             final handler = ref.read(audioHandlerProvider);
                             if (playing) {
@@ -89,7 +93,7 @@ class MiniPlayer extends ConsumerWidget {
                         ),
                         IconButton(
                           icon: const Icon(Icons.skip_next),
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           onPressed: () {
                             ref.read(audioHandlerProvider).skipToNext();
                           },

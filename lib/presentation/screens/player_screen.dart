@@ -1,17 +1,98 @@
-import 'dart:io';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // useful for streams
 import '../widgets/waveform_seek_bar.dart';
 import '../providers/audio_providers.dart';
+import '../providers/music_providers.dart'; // Added for playlists
 import '../../main.dart'; // for audioHandlerProvider
+import '../widgets/rotating_album_art.dart';
+import '../widgets/soul_land.dart';
+import '../widgets/marquee_text.dart';
 
-class PlayerScreen extends ConsumerWidget {
+class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+  bool _isVolumeOverlayVisible = false;
+
+  void _openVolumeOverlay(BuildContext context) {
+    setState(() {
+      _isVolumeOverlayVisible = true;
+    });
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent, // Only overlay the slider
+      builder: (context) {
+        return SoulLand(
+          autoCloseDuration: const Duration(seconds: 10),
+          icon: const Icon(Icons.volume_up, color: Colors.green, size: 24),
+          onClosed: () {
+            if (mounted && Navigator.canPop(context)) {
+              Navigator.of(context).pop();
+            }
+          },
+          child: const _VolumeSlider(),
+        );
+      },
+    ).then((_) {
+      if (mounted) {
+        setState(() {
+          _isVolumeOverlayVisible = false;
+        });
+      }
+    });
+  }
+
+  Future<void> _toggleFavorite(WidgetRef ref, int? songId) async {
+    if (songId == null) return;
+    final repo = ref.read(musicRepositoryProvider);
+    final playlists = await ref.read(playlistsProvider.future);
+
+    var favList = playlists.where((p) => p.name == 'Favorites');
+    var fav = favList.isNotEmpty ? favList.first : null;
+
+    if (fav == null) {
+      await repo.createPlaylist('Favorites');
+      ref.invalidate(playlistsProvider);
+      // Wait a tick for rebuild or verify existence?
+      // Simplified: Just invalidate. Next tap will find it.
+      // Or manually fetch for immediate "Add".
+      final updated = await repo.getPlaylists();
+      fav = updated.firstWhere((p) => p.name == 'Favorites');
+    }
+
+    final isLiked = fav.songs.any((s) => s.id == songId);
+
+    if (isLiked) {
+      await repo.removeSongFromPlaylist(fav.id, songId);
+    } else {
+      await repo.addSongsToPlaylist(fav.id, [songId]);
+    }
+
+    ref.invalidate(playlistsProvider);
+  }
+
+  AudioServiceRepeatMode _nextRepeatMode(AudioServiceRepeatMode mode) {
+    switch (mode) {
+      case AudioServiceRepeatMode.none:
+        return AudioServiceRepeatMode.all;
+      case AudioServiceRepeatMode.all:
+        return AudioServiceRepeatMode.one;
+      case AudioServiceRepeatMode.one:
+        return AudioServiceRepeatMode.none;
+      default:
+        return AudioServiceRepeatMode.none;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final mediaItemAsync = ref.watch(currentMediaItemProvider);
     final playbackStateAsync = ref.watch(playbackStateProvider);
 
@@ -21,6 +102,21 @@ class PlayerScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
+        actions: [
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: _isVolumeOverlayVisible ? 0.0 : 1.0,
+            child: IgnorePointer(
+              ignoring: _isVolumeOverlayVisible,
+              child: IconButton(
+                icon: const Icon(Icons.volume_up),
+                onPressed: () {
+                  _openVolumeOverlay(context);
+                },
+              ),
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -31,33 +127,20 @@ class PlayerScreen extends ConsumerWidget {
             mediaItemAsync.when(
               data: (item) {
                 if (item == null) return const SizedBox(height: 300);
-                return Container(
-                  height: 320,
-                  width: 320,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                    image: item.artUri != null
-                        ? DecorationImage(
-                            image: FileImage(File(item.artUri!.toFilePath())),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                    color: Colors.grey[850],
-                  ),
-                  child: item.artUri == null
-                      ? const Icon(
-                          Icons.music_note,
-                          size: 100,
-                          color: Colors.white24,
-                        )
-                      : null,
+
+                final isPlaying = playbackStateAsync.value?.playing ?? false;
+
+                return Consumer(
+                  builder: (context, ref, child) {
+                    final positionState = ref.watch(currentPositionProvider);
+                    return RotatingAlbumArt(
+                      mediaId: item.extras?['mediaId'] ?? -1,
+                      artworkPath: item.artUri?.toFilePath(),
+                      size: 320,
+                      isPlaying: isPlaying,
+                      currentPosition: positionState.value ?? Duration.zero,
+                    );
+                  },
                 );
               },
               loading: () => const SizedBox(height: 300),
@@ -66,30 +149,104 @@ class PlayerScreen extends ConsumerWidget {
             const SizedBox(height: 40),
 
             // Title & Artist
+            // Title & Artist with Like Button
             mediaItemAsync.when(
-              data: (item) => Column(
-                children: [
-                  Text(
-                    item?.title ?? 'Not Playing',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              data: (item) {
+                final playlists =
+                    ref.watch(playlistsProvider).valueOrNull ?? [];
+                final favList = playlists.where((p) => p.name == 'Favorites');
+                final favPlaylist = favList.isNotEmpty ? favList.first : null;
+                final currentId = item?.extras?['dbId'] as int?;
+                final isLiked = favPlaylist != null &&
+                    currentId != null &&
+                    favPlaylist.songs.any((s) => s.id == currentId);
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Line 1: Main Title (Full Width)
+                      MarqueeText(
+                        item?.title ?? 'Not Playing',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                        velocity: 20,
+                        pauseDuration: 2.0,
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Line 2: Artist + Actions
+                      Row(
+                        children: [
+                          // Artist Name
+                          Expanded(
+                            child: MarqueeText(
+                              item?.artist ?? '',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                              velocity: 20,
+                            ),
+                          ),
+
+                          // Actions
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(
+                                    16, 0), // Shift right towards the dots
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: Icon(
+                                    isLiked
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isLiked
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurface,
+                                  ),
+                                  onPressed: () =>
+                                      _toggleFavorite(ref, currentId),
+                                ),
+                              ),
+                              Transform.translate(
+                                offset: const Offset(8, 0), // Push towards edge
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: Icon(
+                                    Icons.more_vert,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'More options coming soon!')),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item?.artist ?? '',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 18, color: Colors.grey[400]),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+                );
+              },
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
             ),
@@ -131,8 +288,8 @@ class PlayerScreen extends ConsumerWidget {
                     IconButton(
                       icon: const Icon(Icons.shuffle),
                       color: shuffleMode == AudioServiceShuffleMode.all
-                          ? Colors.deepPurpleAccent
-                          : Colors.grey,
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                       onPressed: () {
                         final newMode =
                             shuffleMode == AudioServiceShuffleMode.none
@@ -143,15 +300,15 @@ class PlayerScreen extends ConsumerWidget {
                     ),
                     IconButton(
                       icon: const Icon(Icons.skip_previous, size: 36),
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       onPressed: () =>
                           ref.read(audioHandlerProvider).skipToPrevious(),
                     ),
                     Container(
                       width: 64,
                       height: 64,
-                      decoration: const BoxDecoration(
-                        color: Colors.deepPurple,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -159,7 +316,7 @@ class PlayerScreen extends ConsumerWidget {
                           playing ? Icons.pause : Icons.play_arrow,
                           size: 32,
                         ),
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         onPressed: () {
                           final handler = ref.read(audioHandlerProvider);
                           playing ? handler.pause() : handler.play();
@@ -168,7 +325,7 @@ class PlayerScreen extends ConsumerWidget {
                     ),
                     IconButton(
                       icon: const Icon(Icons.skip_next, size: 36),
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onSurface,
                       onPressed: () =>
                           ref.read(audioHandlerProvider).skipToNext(),
                     ),
@@ -179,8 +336,8 @@ class PlayerScreen extends ConsumerWidget {
                             : Icons.repeat,
                       ),
                       color: repeatMode == AudioServiceRepeatMode.none
-                          ? Colors.grey
-                          : Colors.deepPurpleAccent,
+                          ? Theme.of(context).colorScheme.onSurfaceVariant
+                          : Theme.of(context).colorScheme.primary,
                       onPressed: () {
                         final newMode = _nextRepeatMode(repeatMode);
                         ref.read(audioHandlerProvider).setRepeatMode(newMode);
@@ -197,17 +354,144 @@ class PlayerScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  AudioServiceRepeatMode _nextRepeatMode(AudioServiceRepeatMode mode) {
-    switch (mode) {
-      case AudioServiceRepeatMode.none:
-        return AudioServiceRepeatMode.all;
-      case AudioServiceRepeatMode.all:
-        return AudioServiceRepeatMode.one;
-      case AudioServiceRepeatMode.one:
-        return AudioServiceRepeatMode.none;
-      default:
-        return AudioServiceRepeatMode.none;
-    }
+class _VolumeSlider extends ConsumerStatefulWidget {
+  const _VolumeSlider();
+
+  @override
+  ConsumerState<_VolumeSlider> createState() => _VolumeSliderState();
+}
+
+class _VolumeSliderState extends ConsumerState<_VolumeSlider> {
+  double _currentVal = 1.0;
+  bool _isDragging = false; // Add dragging state to prevent loop jitter
+
+  @override
+  void initState() {
+    super.initState();
+    _initVolume();
+  }
+
+  Future<void> _initVolume() async {
+    // Hide default system UI to use our custom overlay
+    await FlutterVolumeController.updateShowSystemUI(false);
+
+    // Get current system volume
+    try {
+      final currentVol = await FlutterVolumeController.getVolume();
+      if (mounted && currentVol != null) {
+        setState(() {
+          _currentVal = currentVol;
+        });
+      }
+    } catch (_) {}
+
+    // Listen to system volume changes
+    FlutterVolumeController.addListener((volume) {
+      if (mounted && !_isDragging) {
+        // Only update if NOT dragging
+        setState(() {
+          _currentVal = volume;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    FlutterVolumeController.removeListener();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final percentage = (_currentVal * 100).toInt();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Volume Percentage and Icon
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _currentVal == 0 ? Icons.volume_off : Icons.volume_up,
+              color: Colors.white70,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$percentage%',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Custom Thick Slider
+        SizedBox(
+          height: 30, // Compact touch area
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 12, // Thick track
+              activeTrackColor: Colors.white,
+              inactiveTrackColor: Colors.white24,
+              thumbColor: Colors.transparent, // Hide default thumb
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
+              trackShape: _CustomTrackShape(), // Rounded ends
+            ),
+            child: Slider(
+              value: _currentVal,
+              onChangeStart: (_) {
+                _isDragging = true;
+              },
+              onChangeEnd: (_) {
+                _isDragging = false;
+              },
+              onChanged: (value) {
+                setState(() {
+                  _currentVal = value;
+                });
+                FlutterVolumeController.setVolume(value);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CustomTrackShape extends RoundedRectSliderTrackShape {
+  @override
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+    required Offset thumbCenter,
+    Offset? secondaryOffset, // Make nullable to match super
+    bool isDiscrete = false,
+    bool isEnabled = false,
+    double additionalActiveTrackHeight = 0,
+  }) {
+    super.paint(context, offset,
+        parentBox: parentBox,
+        sliderTheme: sliderTheme,
+        enableAnimation: enableAnimation,
+        textDirection: textDirection,
+        thumbCenter: thumbCenter,
+        secondaryOffset: secondaryOffset,
+        isDiscrete: isDiscrete,
+        isEnabled: isEnabled,
+        additionalActiveTrackHeight: 0 // Keep consistent track height
+        );
   }
 }

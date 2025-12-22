@@ -30,7 +30,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Container(
                 width: 150,
                 height: 150,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Color(0xFF1E1E1E),
                     image: DecorationImage(
@@ -140,7 +140,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     // but explicit request here improves UX flow.
 
     // Using a map to request multiple for efficiency
-    Map<Permission, PermissionStatus> statuses = await [
+    await [
       Permission.audio,
       Permission.storage,
       Permission.manageExternalStorage,
