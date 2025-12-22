@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -23,7 +24,7 @@ class AudioPlayerHandler extends BaseAudioHandler {
     try {
       await _player.setAudioSource(_playlist);
     } catch (e) {
-      print('Error loading audio source: $e');
+      debugPrint('Error loading audio source: $e');
     }
   }
 
@@ -93,11 +94,11 @@ class AudioPlayerHandler extends BaseAudioHandler {
   }
 
   @override
-  Future<void> updateQueue(List<MediaItem> newQueue) async {
+  Future<void> updateQueue(List<MediaItem> queue) async {
     await _playlist.clear();
-    final audioSources = newQueue.map(_createAudioSource).toList();
+    final audioSources = queue.map(_createAudioSource).toList();
     await _playlist.addAll(audioSources);
-    queue.add(newQueue);
+    this.queue.add(queue);
   }
 
   // Custom action to clear queue and play a new list
@@ -219,6 +220,13 @@ class AudioPlayerHandler extends BaseAudioHandler {
           _sleepTimer = null;
         });
       }
+    } else if (name == 'setVolume') {
+      final volume = extras?['volume'] as double?;
+      if (volume != null) {
+        await _player.setVolume(volume);
+      }
+    } else if (name == 'getVolume') {
+      return _player.volume;
     }
   }
 }

@@ -48,8 +48,8 @@ class _WaveformSeekBarState extends State<WaveformSeekBar> {
                   milliseconds:
                       (_dragValue! * widget.duration.inMilliseconds).round())
               : widget.position),
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
@@ -88,8 +88,8 @@ class _WaveformSeekBarState extends State<WaveformSeekBar> {
                     painter: _WaveformPainter(
                       barHeights: _barHeights!,
                       progress: currentProgress,
-                      playedColor: Colors.white,
-                      unplayedColor: Colors.white.withOpacity(0.3),
+                      playedColor: Theme.of(context).colorScheme.onSurface,
+                      unplayedColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                     ),
                   ),
                 );
@@ -101,8 +101,8 @@ class _WaveformSeekBarState extends State<WaveformSeekBar> {
         // Total Time
         Text(
           _formatDuration(widget.duration),
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
@@ -177,7 +177,6 @@ class _WaveformPainter extends CustomPainter {
     // Simpler: divide width by totalBars.
     final stepWidth = size.width / totalBars;
     final barWidth = stepWidth * 0.6; // 60% of slot is bar
-    final gap = stepWidth * 0.4;
 
     final centerY = size.height / 2;
 

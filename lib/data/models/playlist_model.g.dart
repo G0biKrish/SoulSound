@@ -17,18 +17,28 @@ const PlaylistModelSchema = CollectionSchema(
   name: r'PlaylistModel',
   id: -3528207141634668389,
   properties: {
-    r'dateCreated': PropertySchema(
+    r'artworkPath': PropertySchema(
       id: 0,
+      name: r'artworkPath',
+      type: IsarType.string,
+    ),
+    r'dateCreated': PropertySchema(
+      id: 1,
       name: r'dateCreated',
       type: IsarType.dateTime,
     ),
+    r'iconCode': PropertySchema(
+      id: 2,
+      name: r'iconCode',
+      type: IsarType.long,
+    ),
     r'name': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'name',
       type: IsarType.string,
     ),
     r'songIds': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'songIds',
       type: IsarType.longList,
     )
@@ -53,6 +63,12 @@ int _playlistModelEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.artworkPath;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.name.length * 3;
   bytesCount += 3 + object.songIds.length * 8;
   return bytesCount;
@@ -64,9 +80,11 @@ void _playlistModelSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDateTime(offsets[0], object.dateCreated);
-  writer.writeString(offsets[1], object.name);
-  writer.writeLongList(offsets[2], object.songIds);
+  writer.writeString(offsets[0], object.artworkPath);
+  writer.writeDateTime(offsets[1], object.dateCreated);
+  writer.writeLong(offsets[2], object.iconCode);
+  writer.writeString(offsets[3], object.name);
+  writer.writeLongList(offsets[4], object.songIds);
 }
 
 PlaylistModel _playlistModelDeserialize(
@@ -76,10 +94,12 @@ PlaylistModel _playlistModelDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = PlaylistModel();
-  object.dateCreated = reader.readDateTime(offsets[0]);
+  object.artworkPath = reader.readStringOrNull(offsets[0]);
+  object.dateCreated = reader.readDateTime(offsets[1]);
+  object.iconCode = reader.readLongOrNull(offsets[2]);
   object.id = id;
-  object.name = reader.readString(offsets[1]);
-  object.songIds = reader.readLongList(offsets[2]) ?? [];
+  object.name = reader.readString(offsets[3]);
+  object.songIds = reader.readLongList(offsets[4]) ?? [];
   return object;
 }
 
@@ -91,10 +111,14 @@ P _playlistModelDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 1:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 2:
+      return (reader.readLongOrNull(offset)) as P;
+    case 3:
+      return (reader.readString(offset)) as P;
+    case 4:
       return (reader.readLongList(offset) ?? []) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -198,6 +222,160 @@ extension PlaylistModelQueryWhere
 extension PlaylistModelQueryFilter
     on QueryBuilder<PlaylistModel, PlaylistModel, QFilterCondition> {
   QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'artworkPath',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'artworkPath',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'artworkPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'artworkPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'artworkPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'artworkPath',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'artworkPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'artworkPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'artworkPath',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'artworkPath',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'artworkPath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      artworkPathIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'artworkPath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
       dateCreatedEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -245,6 +423,80 @@ extension PlaylistModelQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'dateCreated',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      iconCodeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'iconCode',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      iconCodeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'iconCode',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      iconCodeEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'iconCode',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      iconCodeGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'iconCode',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      iconCodeLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'iconCode',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterFilterCondition>
+      iconCodeBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'iconCode',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -596,6 +848,19 @@ extension PlaylistModelQueryLinks
 
 extension PlaylistModelQuerySortBy
     on QueryBuilder<PlaylistModel, PlaylistModel, QSortBy> {
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy> sortByArtworkPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'artworkPath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy>
+      sortByArtworkPathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'artworkPath', Sort.desc);
+    });
+  }
+
   QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy> sortByDateCreated() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dateCreated', Sort.asc);
@@ -606,6 +871,19 @@ extension PlaylistModelQuerySortBy
       sortByDateCreatedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dateCreated', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy> sortByIconCode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'iconCode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy>
+      sortByIconCodeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'iconCode', Sort.desc);
     });
   }
 
@@ -624,6 +902,19 @@ extension PlaylistModelQuerySortBy
 
 extension PlaylistModelQuerySortThenBy
     on QueryBuilder<PlaylistModel, PlaylistModel, QSortThenBy> {
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy> thenByArtworkPath() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'artworkPath', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy>
+      thenByArtworkPathDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'artworkPath', Sort.desc);
+    });
+  }
+
   QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy> thenByDateCreated() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dateCreated', Sort.asc);
@@ -634,6 +925,19 @@ extension PlaylistModelQuerySortThenBy
       thenByDateCreatedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dateCreated', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy> thenByIconCode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'iconCode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QAfterSortBy>
+      thenByIconCodeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'iconCode', Sort.desc);
     });
   }
 
@@ -664,10 +968,23 @@ extension PlaylistModelQuerySortThenBy
 
 extension PlaylistModelQueryWhereDistinct
     on QueryBuilder<PlaylistModel, PlaylistModel, QDistinct> {
+  QueryBuilder<PlaylistModel, PlaylistModel, QDistinct> distinctByArtworkPath(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'artworkPath', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<PlaylistModel, PlaylistModel, QDistinct>
       distinctByDateCreated() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'dateCreated');
+    });
+  }
+
+  QueryBuilder<PlaylistModel, PlaylistModel, QDistinct> distinctByIconCode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'iconCode');
     });
   }
 
@@ -693,10 +1010,22 @@ extension PlaylistModelQueryProperty
     });
   }
 
+  QueryBuilder<PlaylistModel, String?, QQueryOperations> artworkPathProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'artworkPath');
+    });
+  }
+
   QueryBuilder<PlaylistModel, DateTime, QQueryOperations>
       dateCreatedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'dateCreated');
+    });
+  }
+
+  QueryBuilder<PlaylistModel, int?, QQueryOperations> iconCodeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'iconCode');
     });
   }
 

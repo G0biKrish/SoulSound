@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/music_providers.dart';
 import '../providers/audio_providers.dart';
+import '../providers/dock_providers.dart';
 import '../widgets/mini_player.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
@@ -21,22 +22,34 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
+  int? _draggedIndex;
 
-  final _tabs = [
-    const SongsTab(),
-    const ArtistsTab(),
-    const AlbumsTab(),
-    const GenresTab(),
-    const PlaylistsTab(),
-  ];
-
-  get import => null;
+  List<Widget> get _tabs {
+    final dockItems = ref.watch(dockItemsProvider);
+    return dockItems.map((item) {
+      switch (item.originalIndex) {
+        case 0:
+          return const SongsTab();
+        case 1:
+          return const ArtistsTab();
+        case 2:
+          return const AlbumsTab();
+        case 3:
+          return const GenresTab();
+        case 4:
+          return const PlaylistsTab();
+        default:
+          return const SongsTab();
+      }
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     // isScanning removed as it is no longer used in the UI
 
     return Scaffold(
+      resizeToAvoidBottomInset: false, // Prevent moving up when keyboard opens
       appBar: AppBar(
         leading: Padding(
           padding: const EdgeInsets.all(2.0),
@@ -45,8 +58,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         titleSpacing: 0,
         title: ShaderMask(
           blendMode: BlendMode.srcIn,
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Colors.pinkAccent, Colors.orangeAccent],
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ).createShader(bounds),
@@ -143,12 +159,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF181818), // Dark card background
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(30)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .shadow
+                          .withValues(alpha: 0.5),
                       blurRadius: 30,
                       offset: const Offset(0, -10),
                     ),
@@ -163,7 +182,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey[800],
+                        color: Theme.of(context).colorScheme.outline,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -183,26 +202,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF252525),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .shadow
+                                .withValues(alpha: 0.4),
                             blurRadius: 15,
                             offset: const Offset(0, 5),
                           ),
                         ],
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildDockIcon(0, Icons.music_note, 'Songs'),
-                          _buildDockIcon(1, Icons.person, 'Artists'),
-                          _buildDockIcon(2, Icons.album, 'Albums'),
-                          _buildDockIcon(3, Icons.queue_music, 'Genres'),
-                          _buildDockIcon(4, Icons.playlist_play, 'Playlists'),
-                        ],
-                      ),
+                      child: _buildReorderableDock(),
                     ),
                   ],
                 ),
@@ -214,60 +229,186 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               margin: const EdgeInsets.fromLTRB(12, 0, 12, 30),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFF252525),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.4),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .shadow
+                        .withValues(alpha: 0.4),
                     blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
                 ],
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildDockIcon(0, Icons.music_note, 'Songs'),
-                  _buildDockIcon(1, Icons.person, 'Artists'),
-                  _buildDockIcon(2, Icons.album, 'Albums'),
-                  _buildDockIcon(3, Icons.queue_music, 'Genres'),
-                  _buildDockIcon(4, Icons.playlist_play, 'Playlists'),
-                ],
-              ),
+              child: _buildReorderableDock(),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildDockIcon(int index, IconData icon, String label) {
-    final isSelected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : Colors.grey[600],
-              size: 26,
-            ),
-            const SizedBox(height: 4),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              height: 3,
-              width: isSelected ? 16 : 0,
-              decoration: BoxDecoration(
-                color: Colors.deepPurpleAccent,
-                borderRadius: BorderRadius.circular(2),
+  Widget _buildReorderableDock() {
+    final dockItems = ref.watch(dockItemsProvider);
+    final dockNotifier = ref.read(dockItemsProvider.notifier);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(dockItems.length, (index) {
+        final item = dockItems[index];
+        final isSelected = _currentIndex == index;
+        final isDragging = _draggedIndex == index;
+
+        return Expanded(
+          child: LongPressDraggable<int>(
+            data: index,
+            onDragStarted: () {
+              setState(() {
+                _draggedIndex = index;
+              });
+            },
+            onDragEnd: (details) {
+              setState(() {
+                _draggedIndex = null;
+              });
+            },
+            feedback: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .shadow
+                          .withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      item.icon,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 28,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
-      ),
+            child: DragTarget<int>(
+              onAcceptWithDetails: (details) {
+                final draggedIndex = details.data;
+                if (draggedIndex != index) {
+                  // Store the originalIndex of currently selected item
+                  final selectedOriginalIndex =
+                      dockItems[_currentIndex].originalIndex;
+
+                  // Reorder items
+                  dockNotifier.reorderItems(draggedIndex, index);
+
+                  // Find new position of the selected item
+                  final updatedDockItems = ref.read(dockItemsProvider);
+                  final newSelectedIndex = updatedDockItems.indexWhere(
+                    (item) => item.originalIndex == selectedOriginalIndex,
+                  );
+
+                  setState(() {
+                    _currentIndex =
+                        newSelectedIndex >= 0 ? newSelectedIndex : 0;
+                  });
+                }
+              },
+              builder: (context, candidateData, rejectedData) {
+                final isDragTarget = candidateData.isNotEmpty;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: isDragTarget
+                          ? Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.2)
+                          : Colors.transparent,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          item.icon,
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : isDragging
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withValues(alpha: 0.5)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                          size: 26,
+                        ),
+                        const SizedBox(height: 4),
+                        // Show label for selected item
+                        if (isSelected)
+                          Text(
+                            item.label,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        else
+                          const SizedBox(height: 0),
+                        const SizedBox(height: 2),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 3,
+                          width: isSelected ? 16 : 0,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }),
     );
   }
 }
@@ -295,7 +436,10 @@ class _MiniProgressBar extends ConsumerWidget {
             children: [
               Text(
                 _formatDuration(position),
-                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
               ),
               Expanded(
                 child: Padding(
@@ -304,8 +448,11 @@ class _MiniProgressBar extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(2),
                     child: LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: Colors.grey[800],
-                      valueColor: const AlwaysStoppedAnimation(Colors.amber),
+                      backgroundColor:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary,
+                      ),
                       minHeight: 4,
                     ),
                   ),
@@ -313,7 +460,10 @@ class _MiniProgressBar extends ConsumerWidget {
               ),
               Text(
                 _formatDuration(duration),
-                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),

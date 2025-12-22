@@ -5,6 +5,7 @@ import '../../domain/entities/album.dart';
 import '../../domain/entities/artist.dart';
 import '../../domain/entities/playlist.dart';
 import '../../main.dart';
+import '../screens/excluded_folders_screen.dart';
 
 enum SortOption {
   title,
@@ -98,7 +99,9 @@ class ScanNotifier extends StateNotifier<bool> {
 
     state = true;
     try {
-      await ref.read(musicRepositoryProvider).scanDeviceForMusic();
+      // Load excluded folders
+      final excludedFolders = ref.read(excludedFoldersProvider);
+      await ref.read(musicRepositoryProvider).scanDeviceForMusic(excludedFolders: excludedFolders);
       // Invalidate providers to refresh UI
       ref.invalidate(allSongsProvider);
       ref.invalidate(albumsProvider);

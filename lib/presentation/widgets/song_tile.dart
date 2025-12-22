@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'artwork_widget.dart';
 import '../../domain/entities/song.dart';
 
 class SongTile extends StatelessWidget {
@@ -13,22 +13,12 @@ class SongTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Container(
+      leading: ArtworkWidget(
+        mediaId: song.mediaId,
+        artworkPath: song.artworkPath,
         width: 50,
         height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(8),
-          image: song.artworkPath != null
-              ? DecorationImage(
-                  image: FileImage(File(song.artworkPath!)),
-                  fit: BoxFit.cover,
-                )
-              : null,
-        ),
-        child: song.artworkPath == null
-            ? const Icon(Icons.music_note, color: Colors.white54)
-            : null,
+        borderRadius: 8,
       ),
       title: Text(
         song.title,
@@ -40,12 +30,15 @@ class SongTile extends StatelessWidget {
         song.artist,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: Colors.grey[400]),
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       trailing: trailing ??
           Text(
             _formatDuration(song.duration),
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
           ),
       onTap: onTap,
     );

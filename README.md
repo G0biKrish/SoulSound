@@ -30,4 +30,33 @@ SoulSound  is a sleek, modern, offline-first music player built with Flutter. It
     -   Duration (Longest First)
 -   **Library Management**: (In Progress) Dedicated tabs for Songs, Artists, Albums, Genres, and Playlists.
 
+## 🚀 Changelog
 
+
+### v1.0.0 Release Notes
+## 🌟 New Features
+- **Floating Dock Navigation**: A sleek, pill dock that floats at the bottom of the screen, featuring smooth animations and "pop-up" selection effects.
+- **Visual Waveform Seek Bar**: A stunning, interactive waveform visualization in the player for precise scrubbing.
+- **Dynamic "Now Playing" Card**:
+    - **Draggable Interface**: Seamlessly swipe up from the mini-player to reveal the full player.
+    - **Auto-Hide**: The entire player interface intelligently hides when no music is playing, keeping your home screen clean.
+- **Improved Sorting**: Sort your library by Title, Artist, Duration, Date Added, or Play Count.
+- **Glassmorphism UI**: Updated `MiniPlayer` and various UI elements with modern transparency and blur effects.
+
+## 🐛 Fixes & Improvements
+- Fixed text shadow rendering issues on some devices.
+- optimized app startup time.
+- Enhanced stability of file permission handling.
+
+---
+
+### v1.1.0 - The Playlist Update
+## 🌟 New Features
+-   **Rich Playlist Creation**: Redesigned creation dialog with a premium dark theme.
+-   **Customization**: Added support for picking custom icons (12 presets) or uploading cover images from the gallery.
+-   **Safe Storage**: Automated secure storage for playlist artwork.
+-   **Smart Playlists**: Added "Most Played" and "Liked Songs" auto-generated playlists.
+
+**🐛 Bug Fixes & Improvements**
+*   **UI Stability**: Fixed keyboard overlay issues causing the navigation bar/mini-player to shift upwards.
+*   **Performance**: Optimized playlist rendering efficiently handles custom assets.

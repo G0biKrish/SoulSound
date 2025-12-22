@@ -13,6 +13,8 @@ import 'data/services/metadata_scanner.dart';
 import 'core/audio/audio_handler.dart';
 import 'domain/repositories/music_repository.dart';
 import 'presentation/screens/home_screen.dart';
+import 'presentation/providers/theme_providers.dart';
+import 'core/theme/app_theme.dart';
 
 // Dependency Injection via Riverpod
 late AudioHandler _audioHandler;
@@ -52,27 +54,21 @@ void main() async {
   runApp(ProviderScope(child: SoundFlowApp(showOnboarding: showOnboarding)));
 }
 
-class SoundFlowApp extends StatelessWidget {
+class SoundFlowApp extends ConsumerWidget {
   final bool showOnboarding;
   const SoundFlowApp({super.key, required this.showOnboarding});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeState = ref.watch(themeProvider);
+    final theme = buildThemeData(themeState);
+
     return MaterialApp(
       title: 'SoulSound',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        colorScheme: const ColorScheme.dark(
-          primary: Colors.deepPurple,
-          secondary: Colors.tealAccent,
-          surface: Color(0xFF1E1E1E),
-        ),
-        useMaterial3: true,
-        fontFamily: 'Inter',
-      ),
+      theme: theme,
+      darkTheme: theme,
+      themeMode: ThemeMode.system,
       home: showOnboarding ? const OnboardingScreen() : const HomeScreen(),
     );
   }

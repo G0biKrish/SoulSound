@@ -5,7 +5,8 @@ import '../entities/playlist.dart';
 
 abstract class MusicRepository {
   // Scanning
-  Future<void> scanDeviceForMusic({bool forceRescan = false});
+  Future<void> scanDeviceForMusic(
+      {bool forceRescan = false, List<String> excludedFolders = const []});
 
   // Queries
   Future<List<Song>> getAllSongs();
@@ -20,7 +21,8 @@ abstract class MusicRepository {
 
   // Playlists
   Future<List<Playlist>> getPlaylists();
-  Future<void> createPlaylist(String name);
+  Future<void> createPlaylist(String name,
+      {int? iconCode, String? artworkPath});
   Future<void> deletePlaylist(int playlistId);
   Future<void> addSongsToPlaylist(int playlistId, List<int> songIds);
   Future<void> removeSongFromPlaylist(int playlistId, int songId);
