@@ -11,6 +11,7 @@ class Song {
   final String? artworkPath; // Path to cached artwork file
   final DateTime dateAdded;
   final int playCount;
+  final int monthlyPlays;
 
   const Song({
     required this.id,
@@ -25,6 +26,7 @@ class Song {
     this.artworkPath,
     required this.dateAdded,
     this.playCount = 0,
+    this.monthlyPlays = 0,
   });
 
   // Empty factory for defaults

@@ -33,6 +33,7 @@ class SongModel {
 
   // For playback history / stats
   int playCount = 0;
+  int monthlyPlayCount = 0;
   int playtimeMs = 0; // Total time played
   DateTime? lastPlayed;
 }

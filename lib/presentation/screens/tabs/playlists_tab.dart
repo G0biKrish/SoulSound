@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -192,13 +193,22 @@ class PlaylistsTab extends ConsumerWidget {
                 child: (playlist.artworkPath != null)
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          File(playlist.artworkPath!),
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            // Fallback to icon if image fails to load
+                        child: FutureBuilder<Uint8List?>(
+                          future: _loadEncryptedArtwork(playlist.artworkPath!),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data != null) {
+                              return Image.memory(
+                                snapshot.data!,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(displayIcon,
+                                      color: color, size: 28);
+                                },
+                              );
+                            }
+                            // Show icon while loading or on error
                             return Icon(displayIcon, color: color, size: 28);
                           },
                         ),
@@ -251,15 +261,19 @@ class PlaylistsTab extends ConsumerWidget {
                         child: Text('Delete',
                             style: TextStyle(color: Colors.white))),
                   ],
-                  onSelected: (value) {
+                  onSelected: (value) async {
                     if (ref == null) return;
                     if (value == 'delete') {
-                      ref
+                      await ref
                           .read(musicRepositoryProvider)
                           .deletePlaylist(playlist.id);
                       ref.invalidate(playlistsProvider);
                     } else if (value == 'rename') {
-                      _showRenamePlaylistDialog(context, ref, playlist);
+                      // Delay slightly to let menu close, though usually auto-closes
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        if (context.mounted)
+                          _showRenamePlaylistDialog(context, ref, playlist);
+                      });
                     }
                   },
                 ),
@@ -379,10 +393,10 @@ class PlaylistsTab extends ConsumerWidget {
                                           selectedImagePath = null;
                                         });
                                       },
-                                      child: CircleAvatar(
+                                      child: const CircleAvatar(
                                         radius: 12,
                                         backgroundColor: Colors.black54,
-                                        child: const Icon(Icons.close,
+                                        child: Icon(Icons.close,
                                             size: 14, color: Colors.white),
                                       ),
                                     ),
@@ -497,37 +511,108 @@ class PlaylistsTab extends ConsumerWidget {
     );
   }
 
+  /// XOR encrypt/decrypt bytes with a simple key
+  List<int> _encryptBytes(List<int> bytes) {
+    // Simple XOR cipher - same operation for encrypt and decrypt
+    const key = [
+      0x53,
+      0x6F,
+      0x75,
+      0x6C,
+      0x53,
+      0x6F,
+      0x75,
+      0x6E,
+      0x64
+    ]; // "SoulSound"
+    final result = <int>[];
+    for (int i = 0; i < bytes.length; i++) {
+      result.add(bytes[i] ^ key[i % key.length]);
+    }
+    return result;
+  }
+
+  /// Load and decrypt artwork file
+  Future<Uint8List?> _loadEncryptedArtwork(String encryptedPath) async {
+    try {
+      final file = File(encryptedPath);
+      if (!await file.exists()) return null;
+
+      final encryptedBytes = await file.readAsBytes();
+      final decryptedBytes = _encryptBytes(encryptedBytes);
+      return Uint8List.fromList(decryptedBytes);
+    } catch (e) {
+      debugPrint('Error loading encrypted artwork: $e');
+      return null;
+    }
+  }
+
   Future<String?> _savePlaylistArtwork(String sourcePath) async {
     try {
-      final docsDir = await getApplicationDocumentsDirectory();
-      final artDir = Directory(p.join(docsDir.path, 'playlist_art'));
+      // 1. Cleanup old legacy folders if they exist
+      try {
+        final docDir = await getApplicationDocumentsDirectory();
+        final legacyDirs = ['playlist_art', 'art', '.private_art'];
+        for (final dirName in legacyDirs) {
+          final dir = Directory(p.join(docDir.path, dirName));
+          if (await dir.exists()) {
+            await dir.delete(recursive: true);
+            debugPrint('Cleaned up legacy dir: $dirName');
+          }
+        }
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+
+      // 2. Use ApplicationSupportDirectory + hidden .soulSound folder
+      final appDir = await getApplicationSupportDirectory();
+      final artDir = Directory(p.join(appDir.path, '.soulSound', 'artwork'));
       if (!artDir.existsSync()) {
         await artDir.create(recursive: true);
-      } // Create directory if it doesn't exist
+        // Create .nomedia file
+        try {
+          await File(p.join(artDir.path, '.nomedia')).create();
+        } catch (_) {}
+      }
 
-      final fileName = 'art_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final fileName = '.enc_${DateTime.now().millisecondsSinceEpoch}.dat';
       final targetPath = p.join(artDir.path, fileName);
 
-      // SIMPLIFIED: Direct copy to debug issue (Compression commented out)
-      /*
-      try {
-        final result = await FlutterImageCompress.compressAndGetFile(
-          sourcePath,
-          targetPath,
-          quality: 80,
-          minWidth: 500,
-          minHeight: 500,
-        );
-        if (result != null) return result.path;
-      } catch (e) {
-        debugPrint('Compression failed: $e');
-      }
-      */
+      // Read source image bytes
+      final sourceBytes = await File(sourcePath).readAsBytes();
 
-      // Fallback: Just copy the file
-      final newFile = await File(sourcePath).copy(targetPath);
-      debugPrint('Image saved to: ${newFile.path}');
-      return newFile.path;
+      // Encrypt the bytes
+      final encryptedBytes = _encryptBytes(sourceBytes);
+
+      // Write encrypted bytes to file
+      await File(targetPath).writeAsBytes(encryptedBytes);
+
+      debugPrint('Encrypted image saved to: $targetPath');
+
+      // AGGRESSIVE CLEANUP:
+      // 1. Clear FilePicker's internal cache
+      try {
+        await FilePicker.platform.clearTemporaryFiles();
+      } catch (_) {}
+
+      // 2. Explicitly try to delete the source file if it looks like a cache file
+      // (This removes the "copy" the user sees in their gallery/files app if the picker put it there)
+      try {
+        final cacheDir = await getTemporaryDirectory();
+        if (sourcePath.contains(cacheDir.path) ||
+            sourcePath.contains('cache')) {
+          final sourceFile = File(sourcePath);
+          if (await sourceFile.exists()) {
+            await sourceFile.delete();
+            debugPrint('Deleted temporary source file: $sourcePath');
+          }
+        }
+      } catch (e) {
+        debugPrint(
+            'Could not delete source file (might be original user file): $e');
+      }
+
+      return targetPath;
     } catch (e) {
       debugPrint('Error saving playlist artwork: $e');
       return null;

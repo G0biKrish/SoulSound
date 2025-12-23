@@ -38,8 +38,11 @@ void main() async {
   ], directory: dir.path);
 
   // 2. Initialize Audio Service
+  // We need to create the repository instance early to pass it to the handler
+  final musicRepository = MusicRepositoryImpl(_isar, MetadataScanner());
+
   _audioHandler = await AudioService.init(
-    builder: () => AudioPlayerHandler(),
+    builder: () => AudioPlayerHandler(musicRepository),
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'com.soundflow.channel.audio',
       androidNotificationChannelName: 'Music Playback',

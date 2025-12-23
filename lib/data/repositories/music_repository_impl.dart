@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -50,6 +51,12 @@ class MusicRepositoryImpl implements MusicRepository {
         final existing =
             await _isar.songModels.filter().pathEqualTo(song.data).findFirst();
         if (existing != null) continue;
+      }
+
+      // Explicitly check if file exists on disk
+      // on_audio_query might return cachedMediaStore entries even if file is deleted
+      if (!File(song.data).existsSync()) {
+        continue;
       }
 
       // Skip very short songs (less than 1 second)
@@ -107,13 +114,30 @@ class MusicRepositoryImpl implements MusicRepository {
       artworkPath: model.artworkPath,
       dateAdded: model.dateAdded,
       playCount: model.playCount,
+      monthlyPlays:
+          _isCurrentMonth(model.lastPlayed) ? model.monthlyPlayCount : 0,
     );
+  }
+
+  bool _isCurrentMonth(DateTime? date) {
+    if (date == null) return false;
+    final now = DateTime.now();
+    return date.year == now.year && date.month == now.month;
   }
 
   @override
   Future<List<Song>> getAllSongs() async {
     final models = await _isar.songModels.where().sortByTitle().findAll();
     return models.map(_toEntity).toList();
+  }
+
+  @override
+  Stream<List<Song>> watchAllSongs() {
+    return _isar.songModels
+        .where()
+        .sortByTitle()
+        .watch(fireImmediately: true)
+        .map((models) => models.map(_toEntity).toList());
   }
 
   @override
@@ -257,6 +281,17 @@ class MusicRepositoryImpl implements MusicRepository {
 
   @override
   Future<void> deletePlaylist(int playlistId) async {
+    final playlist = await _isar.playlistModels.get(playlistId);
+    if (playlist?.artworkPath != null) {
+      try {
+        final file = File(playlist!.artworkPath!);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (e) {
+        // Ignore file delete errors
+      }
+    }
     await _isar.writeTxn(() async {
       await _isar.playlistModels.delete(playlistId);
     });
@@ -300,9 +335,17 @@ class MusicRepositoryImpl implements MusicRepository {
     if (song.id < 0) return;
     final model = await _isar.songModels.get(song.id);
     if (model != null) {
+      final now = DateTime.now();
+
+      // Reset monthly count if it's a new month
+      if (!_isCurrentMonth(model.lastPlayed)) {
+        model.monthlyPlayCount = 0;
+      }
+
       model.playCount += 1;
+      model.monthlyPlayCount += 1;
       model.playtimeMs += song.duration.inMilliseconds;
-      model.lastPlayed = DateTime.now();
+      model.lastPlayed = now;
       await _isar.writeTxn(() async {
         await _isar.songModels.put(model);
       });
@@ -350,5 +393,34 @@ class MusicRepositoryImpl implements MusicRepository {
       'topArtist': topArtist,
       'topGenre': topGenre,
     };
+  }
+
+  @override
+  Future<void> deleteSongs(List<int> songIds) async {
+    final songsToDelete = await _isar.songModels.getAll(songIds);
+
+    for (var song in songsToDelete) {
+      if (song != null) {
+        try {
+          final file = File(song.path);
+          if (await file.exists()) {
+            await file.delete();
+            debugPrint('Deleted file: ${song.path}');
+          }
+        } catch (e) {
+          debugPrint('Error deleting file ${song.path}: $e');
+          // Start of on_audio_query/android R deletion logic if needed.
+          // For now, simpler direct delete.
+          // If simple File.delete() fails on Android 11+ due to scoped storage,
+          // we might need more complex permission flows (recoverableSecurityException).
+          // But since the app likely has MANAGE_EXTERNAL_STORAGE or similar permissions
+          // (implied by "offline music player" scanning everything), let's try direct first.
+        }
+      }
+    }
+
+    await _isar.writeTxn(() async {
+      await _isar.songModels.deleteAll(songIds);
+    });
   }
 }

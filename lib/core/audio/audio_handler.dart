@@ -2,15 +2,19 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+import '../../domain/repositories/music_repository.dart';
+import '../../domain/entities/song.dart';
 
 class AudioPlayerHandler extends BaseAudioHandler {
-  final _player = AudioPlayer();
-  final _playlist = ConcatenatingAudioSource(children: []);
+  final AudioPlayer _player = AudioPlayer();
+  final ConcatenatingAudioSource _playlist =
+      ConcatenatingAudioSource(children: []);
+  final MusicRepository musicRepository;
 
   // Mapping from media ID to local file ID or path
   // We use MediaItem.id as the song ISAR ID or Path.
 
-  AudioPlayerHandler() {
+  AudioPlayerHandler(this.musicRepository) {
     _loadEmptyPlaylist();
     _notifyAudioHandlerAboutPlaybackEvents();
     _listenToPlaybackState();
@@ -188,6 +192,9 @@ class AudioPlayerHandler extends BaseAudioHandler {
     });
   }
 
+  bool _currentTrackLogged = false;
+  String? _lastTrackId;
+
   void _listenToSequenceState() {
     _player.sequenceStateStream.listen((state) {
       final sequence = state?.sequence;
@@ -197,8 +204,76 @@ class AudioPlayerHandler extends BaseAudioHandler {
       if (source is UriAudioSource && source.tag is MediaItem) {
         final item = source.tag as MediaItem;
         mediaItem.add(item);
+
+        // Reset logging state when song changes
+        if (item.id != _lastTrackId) {
+          _lastTrackId = item.id;
+          _currentTrackLogged = false;
+        }
       }
     });
+
+    // Listen for playback completion based on position
+    _player.positionStream.listen((position) {
+      final duration = _player.duration;
+      final currentItem = mediaItem.value;
+
+      // Reset 'logged' flag if song starts over (e.g. repeat mode)
+      if (position.inMilliseconds < 1000 && _currentTrackLogged) {
+        _currentTrackLogged = false;
+      }
+
+      if (currentItem != null &&
+          duration != null &&
+          duration.inMilliseconds > 0 &&
+          !_currentTrackLogged) {
+        // Count as played if:
+        // 1. Position is within last 2 seconds
+        // 2. OR played more than 98%
+        final threshold = duration - const Duration(seconds: 2);
+        final percentPlayed = position.inMilliseconds / duration.inMilliseconds;
+
+        if (position >= threshold || percentPlayed >= 0.98) {
+          _logPlay(currentItem);
+          _currentTrackLogged = true;
+          debugPrint('Song completed: ${currentItem.title}');
+        }
+      }
+    });
+
+    // Also keep the 'completed' state check as a backup for the last song
+    _player.processingStateStream.listen((processingState) {
+      if (processingState == ProcessingState.completed) {
+        final currentItem = mediaItem.value;
+        if (currentItem != null && !_currentTrackLogged) {
+          _logPlay(currentItem);
+          _currentTrackLogged = true;
+        }
+      }
+    });
+  }
+
+  void _logPlay(MediaItem item) {
+    if (item.extras != null && item.extras!.containsKey('dbId')) {
+      final id = item.extras!['dbId'] as int;
+      // We only need the ID for logSongPlay to work as it fetches the model
+      // But we need to pass a Song object.
+      // We can create a dummy Song with the ID or update repo to take ID.
+      // Updating repo is cleaner, but let's stick to existing contract for now.
+
+      final song = Song(
+        id: id,
+        mediaId: item.extras!['mediaId'] as int? ?? 0,
+        path: item.id,
+        title: item.title,
+        artist: item.artist ?? 'Unknown',
+        album: item.album ?? 'Unknown',
+        duration: item.duration ?? Duration.zero,
+        dateAdded: DateTime.now(), // Dummy
+      );
+      musicRepository.logSongPlay(song);
+      debugPrint('Logged play for: ${item.title}');
+    }
   }
 
   void _listenToBufferedPosition() {}

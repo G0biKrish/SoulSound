@@ -57,28 +57,33 @@ const SongModelSchema = CollectionSchema(
       name: r'mediaId',
       type: IsarType.long,
     ),
-    r'path': PropertySchema(
+    r'monthlyPlayCount': PropertySchema(
       id: 8,
+      name: r'monthlyPlayCount',
+      type: IsarType.long,
+    ),
+    r'path': PropertySchema(
+      id: 9,
       name: r'path',
       type: IsarType.string,
     ),
     r'playCount': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'playCount',
       type: IsarType.long,
     ),
     r'playtimeMs': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'playtimeMs',
       type: IsarType.long,
     ),
     r'title': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'title',
       type: IsarType.string,
     ),
     r'trackNumber': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'trackNumber',
       type: IsarType.long,
     )
@@ -197,11 +202,12 @@ void _songModelSerialize(
   writer.writeString(offsets[5], object.genre);
   writer.writeDateTime(offsets[6], object.lastPlayed);
   writer.writeLong(offsets[7], object.mediaId);
-  writer.writeString(offsets[8], object.path);
-  writer.writeLong(offsets[9], object.playCount);
-  writer.writeLong(offsets[10], object.playtimeMs);
-  writer.writeString(offsets[11], object.title);
-  writer.writeLong(offsets[12], object.trackNumber);
+  writer.writeLong(offsets[8], object.monthlyPlayCount);
+  writer.writeString(offsets[9], object.path);
+  writer.writeLong(offsets[10], object.playCount);
+  writer.writeLong(offsets[11], object.playtimeMs);
+  writer.writeString(offsets[12], object.title);
+  writer.writeLong(offsets[13], object.trackNumber);
 }
 
 SongModel _songModelDeserialize(
@@ -220,11 +226,12 @@ SongModel _songModelDeserialize(
   object.id = id;
   object.lastPlayed = reader.readDateTimeOrNull(offsets[6]);
   object.mediaId = reader.readLong(offsets[7]);
-  object.path = reader.readString(offsets[8]);
-  object.playCount = reader.readLong(offsets[9]);
-  object.playtimeMs = reader.readLong(offsets[10]);
-  object.title = reader.readString(offsets[11]);
-  object.trackNumber = reader.readLongOrNull(offsets[12]);
+  object.monthlyPlayCount = reader.readLong(offsets[8]);
+  object.path = reader.readString(offsets[9]);
+  object.playCount = reader.readLong(offsets[10]);
+  object.playtimeMs = reader.readLong(offsets[11]);
+  object.title = reader.readString(offsets[12]);
+  object.trackNumber = reader.readLongOrNull(offsets[13]);
   return object;
 }
 
@@ -252,14 +259,16 @@ P _songModelDeserializeProp<P>(
     case 7:
       return (reader.readLong(offset)) as P;
     case 8:
-      return (reader.readString(offset)) as P;
-    case 9:
       return (reader.readLong(offset)) as P;
+    case 9:
+      return (reader.readString(offset)) as P;
     case 10:
       return (reader.readLong(offset)) as P;
     case 11:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 12:
+      return (reader.readString(offset)) as P;
+    case 13:
       return (reader.readLongOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1508,6 +1517,62 @@ extension SongModelQueryFilter
     });
   }
 
+  QueryBuilder<SongModel, SongModel, QAfterFilterCondition>
+      monthlyPlayCountEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'monthlyPlayCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SongModel, SongModel, QAfterFilterCondition>
+      monthlyPlayCountGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'monthlyPlayCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SongModel, SongModel, QAfterFilterCondition>
+      monthlyPlayCountLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'monthlyPlayCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SongModel, SongModel, QAfterFilterCondition>
+      monthlyPlayCountBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'monthlyPlayCount',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<SongModel, SongModel, QAfterFilterCondition> pathEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -2052,6 +2117,19 @@ extension SongModelQuerySortBy on QueryBuilder<SongModel, SongModel, QSortBy> {
     });
   }
 
+  QueryBuilder<SongModel, SongModel, QAfterSortBy> sortByMonthlyPlayCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monthlyPlayCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SongModel, SongModel, QAfterSortBy>
+      sortByMonthlyPlayCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monthlyPlayCount', Sort.desc);
+    });
+  }
+
   QueryBuilder<SongModel, SongModel, QAfterSortBy> sortByPath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'path', Sort.asc);
@@ -2223,6 +2301,19 @@ extension SongModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<SongModel, SongModel, QAfterSortBy> thenByMonthlyPlayCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monthlyPlayCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SongModel, SongModel, QAfterSortBy>
+      thenByMonthlyPlayCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monthlyPlayCount', Sort.desc);
+    });
+  }
+
   QueryBuilder<SongModel, SongModel, QAfterSortBy> thenByPath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'path', Sort.asc);
@@ -2338,6 +2429,12 @@ extension SongModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<SongModel, SongModel, QDistinct> distinctByMonthlyPlayCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'monthlyPlayCount');
+    });
+  }
+
   QueryBuilder<SongModel, SongModel, QDistinct> distinctByPath(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -2424,6 +2521,12 @@ extension SongModelQueryProperty
   QueryBuilder<SongModel, int, QQueryOperations> mediaIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'mediaId');
+    });
+  }
+
+  QueryBuilder<SongModel, int, QQueryOperations> monthlyPlayCountProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'monthlyPlayCount');
     });
   }
 

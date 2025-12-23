@@ -10,6 +10,7 @@ abstract class MusicRepository {
 
   // Queries
   Future<List<Song>> getAllSongs();
+  Stream<List<Song>> watchAllSongs(); // New: Watch for changes
   Future<List<Album>> getAlbums();
   Future<List<Artist>> getArtists();
   Future<List<Song>> getSongsByAlbum(String albumName);
@@ -31,4 +32,7 @@ abstract class MusicRepository {
   // Stats / Memories
   Future<void> logSongPlay(Song song);
   Future<Map<String, dynamic>> getMonthlyStats();
+
+  // Management
+  Future<void> deleteSongs(List<int> songIds);
 }

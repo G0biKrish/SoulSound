@@ -60,3 +60,20 @@ SoulSound  is a sleek, modern, offline-first music player built with Flutter. It
 **🐛 Bug Fixes & Improvements**
 *   **UI Stability**: Fixed keyboard overlay issues causing the navigation bar/mini-player to shift upwards.
 *   **Performance**: Optimized playlist rendering efficiently handles custom assets.
+
+---
+
+### v1.1.1 - Streaks & Selection Update
+## 🌟 New Features
+-   **🔥 Streak System**: 
+    -   Track your music habits with monthly play counts.
+    -   **Fire Icons**: Songs show a fire icon based on monthly plays.
+    -   **Burning #1**: The most-played song of the month gets a special animated burning effect.
+-   **✨ Multi-Select Mode**:
+    -   **Long-Press Selection**: Long-press any song to enter selection mode.
+    -   **Bulk Actions**: Easily manage multiple songs at once:
+        -   **Add to Playlist**: Bulk add songs to any playlist.
+        -   **Play Next**: Queue multiple songs instantly.
+        -   **Delete**: Remove multiple songs from your library in one tap.
+    -   **Smart Dock**: A dedicated action dock appears when items are selected.
+-   **Performance**: Added `const` constructors to critical widgets for smoother scrolling.
